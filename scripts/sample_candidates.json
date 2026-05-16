@@ -1,0 +1,12 @@
+[
+  {
+    "id": "cand1",
+    "resumeText": "Experienced Python backend developer with Flask, SQL, and REST APIs",
+    "meta": {"skills": ["Python", "Flask", "SQL"]}
+  },
+  {
+    "id": "cand2",
+    "resumeText": "Frontend developer skilled in React, TypeScript, and CSS",
+    "meta": {"skills": ["React", "TypeScript", "CSS"]}
+  }
+]

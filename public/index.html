@@ -1,0 +1,254 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+    <title>HireIntel AI | Premium Recruitment Assistant</title>
+    <meta name="description" content="Immersive AI-powered resume analysis and adaptive interview platform. Streamlining recruitment with semantic intelligence and conversational realism.">
+    <meta name="keywords" content="AI Recruitment, Resume Analysis, Mock Interview, ATS Scoring, Semantic Search, HR Tech">
+    
+    <!-- Social Preview Tags -->
+    <meta property="og:title" content="HireIntel AI - Intelligent Recruitment Assistant">
+    <meta property="og:description" content="Experience the next generation of AI-driven interviews and resume intelligence.">
+    <meta property="og:image" content="https://images.unsplash.com/photo-1635350736475-c8cef4b21906?auto=format&fit=crop&q=80&w=1200&h=630">
+    <meta property="og:type" content="website">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:image" content="https://images.unsplash.com/photo-1635350736475-c8cef4b21906?auto=format&fit=crop&q=80&w=1200&h=630">
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect width=%22100%22 height=%22100%22 rx=%2220%22 fill=%22%2309090b%22/><text x=%2250%%22 y=%2250%%22 dominant-baseline=%22central%22 text-anchor=%22middle%22 fill=%22white%22 font-family=%22sans-serif%22 font-weight=%22bold%22 font-size=%2250%22>HI</text></svg>">
+
+    <link rel="stylesheet" href="/css/styles.css">
+    <link rel="stylesheet" href="/css/dashboard.css">
+  </head>
+  <body>
+    <div class="flow-shell">
+      <header class="minimal-nav">
+        <div class="brand-lockup">
+          <div class="brand-mark">HI</div>
+          <div>
+            <div class="brand-name">HireIntel</div>
+            <div class="brand-subtitle">AI resume analysis and interview assistant</div>
+          </div>
+        </div>
+        <nav class="flow-steps" aria-label="Progress">
+          <div class="nav-step active"><span>1</span>Upload</div>
+          <div class="nav-connector"></div>
+          <div class="nav-step"><span>2</span>Insights</div>
+          <div class="nav-connector"></div>
+          <div class="nav-step"><span>3</span>Interview</div>
+          <div class="nav-connector"></div>
+          <div class="nav-step"><span>4</span>Evaluation</div>
+        </nav>
+      </header>
+
+      <main>
+        <section id="section-upload" class="section active">
+          <div class="hero-flow">
+            <div class="eyebrow">Resume intelligence</div>
+            <h1>Understand a candidate in minutes.</h1>
+            <p>Upload a resume to generate ATS scoring, semantic match insights, focused improvement feedback, and an AI interview path.</p>
+
+            <div id="uploadZone" class="upload-zone premium-upload" role="button" tabindex="0">
+              <input id="fileInput" type="file" accept=".pdf,.doc,.docx" hidden>
+              <div class="upload-icon">+</div>
+              <h3>Drop a resume here</h3>
+              <p>PDF, DOC, or DOCX up to 10MB</p>
+              <div id="fileInfo" class="file-info hidden">
+                <div>
+                  <div id="fileName" class="name"></div>
+                  <div id="fileSize" class="size"></div>
+                </div>
+              </div>
+              <div id="uploadProgress" class="progress-bar hidden">
+                <div id="uploadFill" class="fill"></div>
+              </div>
+            </div>
+
+            <button id="analyzeBtn" class="primary-cta hidden" onclick="startAnalysis()">Analyze resume</button>
+          </div>
+        </section>
+
+        <section id="section-analysis" class="section">
+          <div class="analysis-hero">
+            <div>
+              <div class="eyebrow">AI analysis</div>
+              <h2>Resume signal, simplified.</h2>
+              <p id="atsSummary">Your ATS summary will appear here.</p>
+            </div>
+            <div class="score-reveal">
+              <div class="score-gauge">
+                <svg viewBox="0 0 160 160" aria-hidden="true">
+                  <circle class="bg" cx="80" cy="80" r="68"></circle>
+                  <circle id="atsGaugeFg" class="fg" cx="80" cy="80" r="68"></circle>
+                </svg>
+                <div class="score-text">
+                  <div><span id="atsScoreNum">0</span></div>
+                  <span>ATS score</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="clean-grid two">
+            <article class="focus-card">
+              <div class="card-label">ATS breakdown</div>
+              <div id="atsCategories" class="signal-list"></div>
+            </article>
+            <article class="focus-card">
+              <div class="card-label">Semantic match</div>
+              <label class="soft-label" for="jobDescriptionInput">Target role or job description</label>
+              <textarea id="jobDescriptionInput" class="job-input" placeholder="Example: Senior Python engineer with Flask, SQL, APIs, and product thinking"></textarea>
+              <button id="semanticBtn" class="secondary-cta" onclick="runSemanticMatch()">Update match</button>
+              <div id="semanticMatchPanel" class="semantic-panel">
+                <div class="semantic-status-icon">✓</div>
+                <div>
+                  <strong id="semanticLabel">Awaiting role context</strong>
+                  <p id="semanticExplain">Semantic insights will appear after analysis.</p>
+                </div>
+              </div>
+            </article>
+          </div>
+
+          <div class="clean-grid two">
+            <article class="focus-card">
+              <div class="card-label">AI resume feedback</div>
+              <div id="feedbackList" class="feedback-list"></div>
+            </article>
+            <article class="focus-card">
+              <div class="card-label">Skill and gap signals</div>
+              <div id="jobCards" class="role-list"></div>
+              <div id="gapAssessment" class="gap-summary"></div>
+              <div id="gapsList" class="gap-list"></div>
+            </article>
+          </div>
+
+          <div class="center-actions">
+            <button class="primary-cta" onclick="goToSection(2)">Choose interview type</button>
+          </div>
+        </section>
+
+        <section id="section-interview-select" class="section">
+          <div class="selection-wrap">
+            <div class="eyebrow">Interview path</div>
+            <h2>Choose the interview experience.</h2>
+            <p>Run a focused AI interview based on the resume signal and target role.</p>
+            <div class="interview-options">
+              <button class="interview-option" onclick="selectInterview('hr')">
+                <span>HR Interview</span>
+                <small>Behavioral signal, motivation, communication, and team fit.</small>
+              </button>
+              <button class="interview-option" onclick="selectInterview('technical')">
+                <span>Technical Interview</span>
+                <small>Role-specific problem solving, skills depth, and practical reasoning.</small>
+              </button>
+            </div>
+          </div>
+        </section>
+
+        <section id="section-hr" class="section interview-stage">
+          <div class="interview-shell">
+            <aside class="interviewer-panel">
+              <div class="ai-orb">AI</div>
+              <div class="interview-mode-pill">Behavioral round</div>
+              <h2>HR Interview</h2>
+              <p>Conversational assessment with live feedback after each answer.</p>
+              <div id="hrModeNote" class="interview-context-note">Preparing candidate context.</div>
+              <div class="voice-controls">
+                <button id="hrVoiceToggle" class="voice-btn" title="Toggle AI Voice" aria-label="Toggle Interviewer Voice Mode">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path><path d="M19 10v1a7 7 0 0 1-14 0v-1"></path><line x1="12" y1="19" x2="12" y2="23"></line><line x1="8" y1="23" x2="16" y2="23"></line></svg>
+                  Voice Mode
+                </button>
+              </div>
+              <div class="q-progress">
+                <span id="hrQNum">0/0</span>
+                <div class="progress-line"><div id="hrProgressFill"></div></div>
+              </div>
+            </aside>
+            <div class="chat-container immersive-chat">
+              <div id="hrMessages" class="chat-messages" role="log" aria-live="polite"></div>
+              <div class="chat-input-area">
+                <textarea id="hrInput" placeholder="Type your answer..." aria-label="Your answer"></textarea>
+                <div class="input-actions">
+                  <button id="hrMicBtn" class="mic-btn" title="Use microphone" aria-label="Use voice input">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path><path d="M19 10v1a7 7 0 0 1-14 0v-1"></path><line x1="12" y1="19" x2="12" y2="23"></line><line x1="8" y1="23" x2="16" y2="23"></line></svg>
+                  </button>
+                  <button class="primary-cta compact" onclick="submitAnswer('hr')" aria-label="Send answer">Send</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section id="section-tech" class="section interview-stage">
+          <div class="interview-shell">
+            <aside class="interviewer-panel">
+              <div class="ai-orb">AI</div>
+              <div class="interview-mode-pill">Technical round</div>
+              <h2>Technical Interview</h2>
+              <p>Focused technical questions with immediate scoring and coaching.</p>
+              <div id="techModeNote" class="interview-context-note">Preparing technical context.</div>
+              <div class="voice-controls">
+                <button id="techVoiceToggle" class="voice-btn" title="Toggle AI Voice">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path><path d="M19 10v1a7 7 0 0 1-14 0v-1"></path><line x1="12" y1="19" x2="12" y2="23"></line><line x1="8" y1="23" x2="16" y2="23"></line></svg>
+                  Voice Mode
+                </button>
+              </div>
+              <div class="q-progress">
+                <span id="techQNum">0/0</span>
+                <div class="progress-line"><div id="techProgressFill"></div></div>
+              </div>
+            </aside>
+            <div class="chat-container immersive-chat">
+              <div id="techMessages" class="chat-messages"></div>
+              <div class="chat-input-area">
+                <textarea id="techInput" placeholder="Type your answer..."></textarea>
+                <div class="input-actions">
+                  <button id="techMicBtn" class="mic-btn" title="Use microphone">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path><path d="M19 10v1a7 7 0 0 1-14 0v-1"></path><line x1="12" y1="19" x2="12" y2="23"></line><line x1="8" y1="23" x2="16" y2="23"></line></svg>
+                  </button>
+                  <button class="primary-cta compact" onclick="submitAnswer('technical')">Send</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section id="section-scoreboard" class="section">
+          <div class="final-wrap">
+            <div class="eyebrow">Final evaluation</div>
+            <h2>Candidate readiness summary.</h2>
+            <div class="final-score">
+              <div class="readiness-label">Readiness</div>
+              <svg viewBox="0 0 200 200" aria-hidden="true">
+                <circle class="bg" cx="100" cy="100" r="86"></circle>
+                <circle id="finalGaugeFg" class="fg" cx="100" cy="100" r="86"></circle>
+              </svg>
+              <div class="score-text">
+                <div id="finalScoreNum">0</div>
+                <span>overall</span>
+              </div>
+            </div>
+            <div id="scoreBreakdown" class="score-breakdown"></div>
+            <div id="radarChart" class="mini-radar"></div>
+            <div id="scoreSummary" class="score-summary"></div>
+            <div class="center-actions">
+              <button class="secondary-cta" onclick="goToSection(0)" aria-label="Start over with another resume">Analyze another resume</button>
+            </div>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <div id="loadingOverlay" class="loading-overlay" role="alert" aria-busy="true" aria-live="assertive">
+      <div class="spinner"></div>
+      <div id="loadingText" class="loading-text">Processing...</div>
+    </div>
+
+    <script src="/js/app.js" defer></script>
+    <script src="/js/analysis.js" defer></script>
+    <script src="/js/upload.js" defer></script>
+    <script src="/js/interview.js" defer></script>
+    <script src="/js/scoreboard.js" defer></script>
+  </body>
+</html>

@@ -1,0 +1,13 @@
+flask
+flask-cors
+python-dotenv
+PyPDF2
+python-docx
+transformers
+torch
+accelerate
+huggingface_hub
+faiss-cpu
+sentence-transformers
+numpy
+pathlib

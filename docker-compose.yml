@@ -1,0 +1,16 @@
+version: '3.8'
+
+services:
+  hireintel:
+    build: .
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./data:/app/data
+      - ./logs:/app/logs
+      - ./models:/app/models
+    environment:
+      - PORT=5000
+      - PRELOAD_MODELS=1
+      - HIREINTEL_ALLOW_MODEL_DOWNLOAD=1
+    restart: unless-stopped
