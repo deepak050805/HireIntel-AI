@@ -1,77 +1,217 @@
-# HireIntel AI - Premium Recruitment Assistant
+# HireIntel AI
 
-![HireIntel AI Banner](https://via.placeholder.com/1200x400/09090b/ffffff?text=HireIntel+AI+-+Premium+Recruitment+Assistant)
+> A premium AI-powered recruitment assistant focused on semantic resume analysis, adaptive interviews, and recruiter-grade candidate evaluation.
 
-**HireIntel AI** is a state-of-the-art, immersive AI-powered resume analysis and adaptive interview platform. Designed for modern recruitment, it transitions from robotic chatbots to realistic, conversational AI assistants.
-
-## 🚀 Key Features
-
-### 🎙️ Immersive Voice Interview Experience
-*   **Conversational Realism:** Adaptive AI interviewer with natural follow-ups and technical probing.
-*   **Web Speech Integration:** Professional Text-to-Speech (TTS) for the interviewer and Speech-to-Text (STT) for candidate input.
-*   **Voice Mode:** Optional hands-free interview experience with real-time transcription.
-
-### 🧠 Semantic ATS Intelligence
-*   **Resume Parsing:** Robust PDF/DOCX extraction with semantic context-awareness.
-*   **Deep Scoring:** Advanced ATS scoring across technical depth, communication, leadership, and cultural fit.
-*   **Gap Analysis:** Strategic identification of missing skills and resume formatting improvements.
-
-### 📊 Recruiter-Grade Evaluations
-*   **Executive Summaries:** Professional "Recruiter Verdicts" and high-level fit assessments.
-*   **Strategic Roadmaps:** Actionable growth steps for candidates based on interview performance.
-*   **Match Insights:** Semantic job matching with weighted scoring systems.
-
-## 🛠️ Tech Stack
-
-*   **Frontend:** Vanilla JavaScript (ES6+), Modern CSS (Variables, Grid, Flexbox), Web Speech API.
-*   **Backend:** Flask (Python), FAISS (Semantic Vector Search), LLM Integration (Hugging Face Transformers).
-*   **Infrastructure:** Docker, Docker-compose, Render/Railway Ready.
-
-## 📦 Installation & Setup
-
-### Local Development
-1. Clone the repository:
-   ```bash
-   git clone https://github.com/your-username/HireIntel-AI.git
-   cd HireIntel-AI
-   ```
-2. Install dependencies:
-   ```bash
-   pip install -r requirements.txt
-   ```
-3. Run the application:
-   ```bash
-   python src/app.py
-   ```
-4. Access at `http://localhost:5000`
-
-### Docker Deployment
-1. Build and run with Docker Compose:
-   ```bash
-   docker-compose up --build
-   ```
-2. Access at `http://localhost:5000`
-
-## 🏗️ Architecture Overview
-
-HireIntel AI uses a modular architecture combining a responsive frontend with a Python-based ML backend.
-
-```mermaid
-graph TD
-    User((Candidate)) -->|Browser| UI[Vanilla JS/CSS Frontend]
-    UI -->|API Calls| API[Flask Backend]
-    API -->|Text Extraction| Parser[Resume Parser]
-    API -->|Vector Search| FAISS[(FAISS Service)]
-    API -->|LLM Inference| Engine[Interview Engine]
-    Engine -->|Web Speech API| Voice[TTS / STT]
-    FAISS -->|Embedding| Embedder[Resume Embedder]
-```
-
-Semantic search is powered by **FAISS**, allowing for near-instant job matching and context retrieval. The interview engine utilizes **Hugging Face** models for generating adaptive questions and evaluating conversational signals.
-
-## 🎨 Design Philosophy
-The platform adheres to a **Premium Monochrome** aesthetic, prioritizing visual clarity, high-end SaaS typography, and subtle micro-animations. It avoids "AI clichés" in favor of a calm, professional recruitment environment.
+![HireIntel AI Banner](https://via.placeholder.com/1200x400/09090b/ffffff?text=HireIntel+AI)
 
 ---
 
-*HireIntel AI - Redefining the interview experience with intelligence and immersion.*
+## Overview
+
+HireIntel AI is a modern recruitment intelligence platform designed to create immersive, conversational hiring experiences.
+
+The platform combines:
+
+* semantic ATS analysis
+* adaptive HR and technical interviews
+* conversational AI interactions
+* contextual memory
+* recruiter-grade evaluations
+* voice-enabled interview experiences
+
+Built with a strong focus on product quality and UX, the system prioritizes realism, clarity, and premium interaction design over traditional dashboard-heavy recruitment software.
+
+---
+
+## Core Features
+
+### Conversational AI Interviews
+
+* Adaptive HR and technical interview flows
+* Context-aware follow-up questioning
+* Resume-aware interview generation
+* Conversational memory and intelligent probing
+* Realistic recruiter-style interactions
+
+### Voice Interview Experience
+
+* Text-to-Speech interviewer responses
+* Speech-to-Text candidate input
+* Optional hands-free interview mode
+* Real-time conversational interaction
+
+### Semantic ATS Intelligence
+
+* Resume parsing with contextual understanding
+* Semantic job matching using vector search
+* Skill-gap analysis and improvement insights
+* Multi-dimensional candidate scoring
+
+### Recruiter-Grade Evaluation System
+
+* Communication and technical depth analysis
+* Confidence and reasoning evaluation
+* Strategic hiring recommendations
+* Candidate improvement roadmap
+
+### Premium Product Experience
+
+* Minimal monochrome interface
+* Responsive mobile-first layouts
+* Smooth conversational transitions
+* Accessible and performance-optimized UI
+
+---
+
+## Technology Stack
+
+### Frontend
+
+* Vanilla JavaScript (ES6+)
+* Modern CSS Architecture
+* Web Speech API
+* Responsive UI System
+
+### Backend
+
+* Flask (Python)
+* FAISS Vector Search
+* Hugging Face Transformers
+* Semantic Embedding Pipeline
+
+### Infrastructure
+
+* Docker
+* Docker Compose
+* Render / Railway Ready
+
+---
+
+## Architecture Overview
+
+```mermaid
+graph TD
+    User((Candidate)) -->|Browser| UI[Frontend Interface]
+    UI -->|API Requests| API[Flask Backend]
+
+    API --> Parser[Resume Parser]
+    API --> ATS[ATS Analysis Engine]
+    API --> FAISS[(FAISS Vector Store)]
+    API --> Engine[Interview Engine]
+
+    Engine --> LLM[LLM Inference Layer]
+    Engine --> Voice[Voice Interaction Layer]
+
+    FAISS --> Embedder[Semantic Embedder]
+```
+
+---
+
+## Local Development Setup
+
+### Clone Repository
+
+```bash
+git clone https://github.com/deepak050805/HireIntel-AI.git
+cd HireIntel-AI
+```
+
+### Install Dependencies
+
+```bash
+pip install -r requirements.txt
+```
+
+### Run Application
+
+```bash
+python src/app.py
+```
+
+Application runs at:
+
+```text
+http://localhost:5000
+```
+
+---
+
+## Docker Deployment
+
+### Build & Run
+
+```bash
+docker-compose up --build
+```
+
+### Access Application
+
+```text
+http://localhost:5000
+```
+
+---
+
+## Design Philosophy
+
+HireIntel AI follows a restrained, premium SaaS design philosophy inspired by modern productivity and recruitment platforms.
+
+The interface emphasizes:
+
+* clarity
+* conversational immersion
+* minimalism
+* calm interaction design
+* recruiter-focused workflows
+
+The experience intentionally avoids:
+
+* cluttered analytics dashboards
+* excessive AI visual clichés
+* overwhelming enterprise complexity
+
+---
+
+## Project Highlights
+
+* Semantic ATS scoring and candidate analysis
+* FAISS-powered vector similarity search
+* Adaptive conversational interview engine
+* Voice-enabled interview interaction
+* Context-aware technical probing
+* Recruiter-grade evaluation reports
+* Dockerized deployment architecture
+* Responsive and accessible UI system
+
+---
+
+## Deployment
+
+The platform is production-ready and can be deployed using:
+
+* Docker
+* Render
+* Railway
+* VPS environments
+
+Detailed deployment instructions are available in:
+
+```text
+SETUP.md
+docs/launch_handbook.md
+```
+
+---
+
+## License
+
+This project is intended for educational, portfolio, and demonstration purposes.
+
+---
+
+## Author
+
+**Deepak Takshak**
+
+AI & Data Science Engineering
+Full-Stack AI Development | NLP | Conversational Systems
