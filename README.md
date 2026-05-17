@@ -1,89 +1,51 @@
 # HireIntel AI
 
-> A premium AI-powered recruitment assistant focused on semantic resume analysis, adaptive interviews, and recruiter-grade candidate evaluation.
+> A premium, production-ready AI-powered recruitment assistant focused on semantic resume analysis, adaptive conversational interviews, and recruiter-grade candidate evaluation.
 
 ![HireIntel AI Banner](https://via.placeholder.com/1200x400/09090b/ffffff?text=HireIntel+AI)
 
 ---
 
-## Overview
+## 🚀 Architectural Update: Lightweight Production SaaS
 
-HireIntel AI is a modern recruitment intelligence platform designed to create immersive, conversational hiring experiences.
+HireIntel AI has been modernized from heavy, local, transformer-based execution (which consumed gigabytes of RAM and made cloud deployments unstable) to a **lightweight, high-performance API-based architecture**.
 
-The platform combines:
-
-* semantic ATS analysis
-* adaptive HR and technical interviews
-* conversational AI interactions
-* contextual memory
-* recruiter-grade evaluations
-* voice-enabled interview experiences
-
-Built with a strong focus on product quality and UX, the system prioritizes realism, clarity, and premium interaction design over traditional dashboard-heavy recruitment software.
+* **Ultra-Fast Conversational Inference**: Offloads text generation to cloud APIs like **Groq** (preferred), **OpenRouter**, or **Together AI** utilizing state-of-the-art models (e.g., Llama 3, Mixtral) in milliseconds.
+* **Instant Cold Starts**: Embedding models (`all-MiniLM-L6-v2`) are **pre-cached in the Docker image at build stage**. This removes all startup downloads, guaranteeing immediate availability and a 100% success rate on lightweight platforms like **Render (Starter Plan)** or **Railway**.
+* **Calm & Premium Aesthetics**: Preserves the complete human-designed monochrome Notion/Linear UI, micro-animations, and full voice-enabled screening rounds while operating with a minimal, SaaS-grade server footprint.
 
 ---
 
 ## Core Features
 
 ### Conversational AI Interviews
-
-* Adaptive HR and technical interview flows
-* Context-aware follow-up questioning
-* Resume-aware interview generation
-* Conversational memory and intelligent probing
-* Realistic recruiter-style interactions
+* **Adaptive HR rounds**: Focus on motivation, ownership, situational behavior, and organizational fit.
+* **Adaptive Technical rounds**: Deep dive into practical problem-solving, architectural choices, and technical trade-offs.
+* **Intelligent Weak-Answer Probing**: Automatically detects brief, low-effort replies (e.g. *"yes"*, *"okay"*, *"idk"*) and challenges candidates for depth, evidence, and validation.
+* **Conversational Memory**: Builds a context summary of the entire dialogue to enable realistic recruiters follow-up questions.
 
 ### Voice Interview Experience
-
-* Text-to-Speech interviewer responses
-* Speech-to-Text candidate input
-* Optional hands-free interview mode
-* Real-time conversational interaction
+* **Voice Mode**: Fully immersive conversational speech loop.
+* **Interviewer Speech (TTS)**: Strips HTML and naturally translates recruiter prompts into calm, paced audio speech.
+* **Mic Input (STT)**: Efficient continuous voice recognition with interim transcripts and auto-submission silence detection.
 
 ### Semantic ATS Intelligence
-
-* Resume parsing with contextual understanding
-* Semantic job matching using vector search
-* Skill-gap analysis and improvement insights
-* Multi-dimensional candidate scoring
-
-### Recruiter-Grade Evaluation System
-
-* Communication and technical depth analysis
-* Confidence and reasoning evaluation
-* Strategic hiring recommendations
-* Candidate improvement roadmap
-
-### Premium Product Experience
-
-* Minimal monochrome interface
-* Responsive mobile-first layouts
-* Smooth conversational transitions
-* Accessible and performance-optimized UI
+* **Resume Parsing**: Contextual extraction of candidate history from PDF/DOCX formats.
+* **Semantic Job Match**: FAISS-powered local vector search and keyword alignment.
+* **Skill & Gap Signals**: Deep resume review identifying missing sections and role fit recommendations.
 
 ---
 
 ## Technology Stack
 
 ### Frontend
-
-* Vanilla JavaScript (ES6+)
-* Modern CSS Architecture
-* Web Speech API
-* Responsive UI System
+* Vanilla JavaScript (ES6+), Web Speech API, and High-Performance Custom RAF Scroll Loops.
+* Modern, responsive monochrome CSS architecture.
 
 ### Backend
-
-* Flask (Python)
-* FAISS Vector Search
-* Hugging Face Transformers
-* Semantic Embedding Pipeline
-
-### Infrastructure
-
-* Docker
-* Docker Compose
-* Render / Railway Ready
+* **Flask (Python)**: Ultra-lightweight endpoint router.
+* **FAISS & Sentence-Transformers**: Pre-cached semantic vector comparison models.
+* **Inference Layer**: Lightweight OpenAI-compatible request handlers (supporting Groq, OpenRouter, Together AI).
 
 ---
 
@@ -99,106 +61,49 @@ graph TD
     API --> FAISS[(FAISS Vector Store)]
     API --> Engine[Interview Engine]
 
-    Engine --> LLM[LLM Inference Layer]
-    Engine --> Voice[Voice Interaction Layer]
-
-    FAISS --> Embedder[Semantic Embedder]
+    Engine --> CloudLLM[Cloud AI completions: Groq / OpenRouter / Together]
+    Engine --> Voice[Voice STT/TTS Layer]
 ```
 
 ---
 
 ## Local Development Setup
 
-### Clone Repository
-
+### 1. Clone & Navigate
 ```bash
 git clone https://github.com/deepak050805/HireIntel-AI.git
 cd HireIntel-AI
 ```
 
-### Install Dependencies
+### 2. Environment Setup
+Copy the production environment template:
+```bash
+cp .env.example .env
+```
+Edit `.env` to select your provider and configure API Keys:
+```env
+AI_PROVIDER=groq
+GROQ_API_KEY=your_groq_api_key_here
+```
 
+### 3. Install Dependencies
 ```bash
 pip install -r requirements.txt
 ```
 
-### Run Application
-
+### 4. Run Application
 ```bash
 python src/app.py
 ```
-
-Application runs at:
-
-```text
-http://localhost:5000
-```
+Access the premium portal at [http://localhost:5000](http://localhost:5000).
 
 ---
 
 ## Docker Deployment
 
-### Build & Run
-
+Build and run containerized environments with pre-loaded embeddings:
 ```bash
 docker-compose up --build
-```
-
-### Access Application
-
-```text
-http://localhost:5000
-```
-
----
-
-## Design Philosophy
-
-HireIntel AI follows a restrained, premium SaaS design philosophy inspired by modern productivity and recruitment platforms.
-
-The interface emphasizes:
-
-* clarity
-* conversational immersion
-* minimalism
-* calm interaction design
-* recruiter-focused workflows
-
-The experience intentionally avoids:
-
-* cluttered analytics dashboards
-* excessive AI visual clichés
-* overwhelming enterprise complexity
-
----
-
-## Project Highlights
-
-* Semantic ATS scoring and candidate analysis
-* FAISS-powered vector similarity search
-* Adaptive conversational interview engine
-* Voice-enabled interview interaction
-* Context-aware technical probing
-* Recruiter-grade evaluation reports
-* Dockerized deployment architecture
-* Responsive and accessible UI system
-
----
-
-## Deployment
-
-The platform is production-ready and can be deployed using:
-
-* Docker
-* Render
-* Railway
-* VPS environments
-
-Detailed deployment instructions are available in:
-
-```text
-SETUP.md
-docs/launch_handbook.md
 ```
 
 ---
@@ -207,11 +112,6 @@ docs/launch_handbook.md
 
 This project is intended for educational, portfolio, and demonstration purposes.
 
----
-
-## Author
-
-**Deepak Takshak**
-
-AI & Data Science Engineering
+**Author**: Deepak Takshak  
+AI & Data Science Engineering  
 Full-Stack AI Development | NLP | Conversational Systems

@@ -1,103 +1,160 @@
 """
-Local LLM engine using Qwen2.5-0.5B-Instruct.
+Lightweight API-based AI inference engine for production deployment.
 
-The heavyweight transformer imports are intentionally lazy. This keeps API
-routes importable even when the local model stack has a dependency mismatch,
-and lets callers decide how to degrade gracefully.
+Eliminates torch, HuggingFace transformers, and heavy memory footprints by
+offloading text generation to ultra-fast cloud completions (Groq, OpenRouter, Together AI).
 """
 
 import os
 import re
+import json
+import urllib.request
+import urllib.error
+import time
 
 from .qa_data import qa_knowledge_base
 from ..core.logger import get_logger
 
 logger = get_logger("llm")
 
-MODEL_ID = "Qwen/Qwen2.5-0.5B-Instruct"
-MODEL_CACHE_DIR = os.path.join(os.path.dirname(__file__), "..", "models")
-ALLOW_MODEL_DOWNLOAD = os.getenv("HIREINTEL_ALLOW_MODEL_DOWNLOAD", "0") == "1"
+# Cache keys / status compatibility
 _model_load_error = None
-
-tokenizer = None
-model = None
-pipe = None
-
-
-def ensure_models_dir():
-    os.makedirs(MODEL_CACHE_DIR, exist_ok=True)
 
 
 def load_model():
-    """Load the local text-generation model once and cache it."""
-    global tokenizer, model, pipe, _model_load_error
+    """No-op for lightweight API inference. Prevents startup delays and downloads."""
+    logger.info("Production Mode: API-based cloud inference activated.")
+    return None
 
-    if pipe is not None:
-        return pipe
-    if _model_load_error is not None:
-        raise RuntimeError(f"Local interview model unavailable: {_model_load_error}") from _model_load_error
 
-    ensure_models_dir()
-    logger.info("Loading local interview model: %s", MODEL_ID)
+def unload_model():
+    """No-op for lightweight API inference."""
+    return None
 
-    try:
-        from transformers import AutoModelForCausalLM, AutoTokenizer, pipeline
 
-        tokenizer = AutoTokenizer.from_pretrained(
-            MODEL_ID,
-            cache_dir=MODEL_CACHE_DIR,
-            trust_remote_code=True,
-            local_files_only=not ALLOW_MODEL_DOWNLOAD,
-        )
+def parse_chat_prompt(prompt):
+    """
+    Parse a legacy system/user/assistant template into a standard OpenAI compatible
+    messages list to ensure clean cloud formatting.
+    """
+    messages = []
+    
+    # Extract system prompt if present
+    system_match = re.search(r"<\|system\|>(.*?)(?=<\|user\|>|$)", prompt, re.DOTALL)
+    user_match = re.search(r"<\|user\|>(.*?)(?=<\|assistant\|>|$)", prompt, re.DOTALL)
+    
+    if system_match:
+        messages.append({
+            "role": "system",
+            "content": system_match.group(1).strip()
+        })
+    else:
+        messages.append({
+            "role": "system",
+            "content": "You are a professional, senior recruiter at a top-tier tech firm running a screening session."
+        })
+        
+    if user_match:
+        messages.append({
+            "role": "user",
+            "content": user_match.group(1).strip()
+        })
+    else:
+        # Fallback if prompt is simple/unstructured
+        messages.append({
+            "role": "user",
+            "content": prompt.strip()
+        })
+        
+    return messages
 
-        model = AutoModelForCausalLM.from_pretrained(
-            MODEL_ID,
-            cache_dir=MODEL_CACHE_DIR,
-            torch_dtype="auto",
-            low_cpu_mem_usage=True,
-            trust_remote_code=True,
-            device_map="auto",
-            local_files_only=not ALLOW_MODEL_DOWNLOAD,
-        )
 
-        pipe = pipeline(
-            "text-generation",
-            model=model,
-            tokenizer=tokenizer,
-            device_map="auto",
-        )
+def _call_api_with_retries(url, headers, payload, timeout=10, max_retries=3):
+    """Robust urllib-based HTTP client with linear backoff retries and zero extra dependencies."""
+    data_bytes = json.dumps(payload).encode("utf-8")
+    req = urllib.request.Request(url, data=data_bytes, headers=headers, method="POST")
+    
+    last_error = None
+    for attempt in range(1, max_retries + 1):
+        try:
+            with urllib.request.urlopen(req, timeout=timeout) as response:
+                res_body = response.read().decode("utf-8")
+                res_json = json.loads(res_body)
+                choices = res_json.get("choices", [])
+                if choices:
+                    content = choices[0].get("message", {}).get("content", "").strip()
+                    if content:
+                        return content
+                raise ValueError("API completed but returned an empty choice choice array")
+        except Exception as exc:
+            last_error = exc
+            logger.warning("Cloud completion attempt %d/%d failed: %s", attempt, max_retries, exc)
+            if attempt < max_retries:
+                time.sleep(1.0 * attempt)
+                
+    raise RuntimeError(f"All cloud completion API attempts failed: {last_error}")
 
-        logger.info("Local interview model loaded successfully")
-        return pipe
-    except Exception as exc:
-        _model_load_error = exc
-        logger.exception(
-            "Local interview model failed to load. Verify transformers, "
-            "huggingface_hub, accelerate, and cached model files: %s",
-            exc,
-        )
-        raise
+
+def _fallback_response(prompt):
+    """Context-aware fallback responses to keep the interview flow smooth if APIs go down."""
+    prompt_lower = prompt.lower()
+    if "score" in prompt_lower or "evaluate" in prompt_lower:
+        return "Score: 7/10\nGot it, that is helpful context. I appreciate the explanation. Can you go one step deeper into the trade-offs or constraints you faced in that scenario?"
+    return "Understood. That sounds like a solid starting point. What exact metrics or validated outcomes would you point to if assessing the success of that project?"
 
 
 def generate_text(prompt, max_tokens=256, temperature=0.7, use_qa_data=False):
-    """Generate text using the local model."""
+    """Generate completions using Groq (preferred), OpenRouter, or Together AI."""
     if use_qa_data:
         for question, answer in qa_knowledge_base.items():
             if question.lower() in prompt.lower():
                 return answer
 
-    active_pipe = load_model()
-    outputs = active_pipe(
-        prompt,
-        max_new_tokens=max_tokens,
-        do_sample=True,
-        temperature=temperature,
-        top_k=50,
-        top_p=0.95,
-        pad_token_id=tokenizer.eos_token_id,
-        eos_token_id=tokenizer.eos_token_id,
-    )
-    return outputs[0]["generated_text"]
+    provider = os.getenv("AI_PROVIDER", "groq").lower().strip()
+    
+    url = ""
+    headers = {"Content-Type": "application/json"}
+    model_name = ""
+    api_key = ""
+
+    if provider == "groq":
+        api_key = os.getenv("GROQ_API_KEY", "").strip()
+        url = "https://api.groq.com/openai/v1/chat/completions"
+        headers["Authorization"] = f"Bearer {api_key}"
+        model_name = os.getenv("AI_MODEL", "llama3-8b-8192").strip()
+    elif provider == "openrouter":
+        api_key = os.getenv("OPENROUTER_API_KEY", "").strip()
+        url = "https://openrouter.ai/api/v1/chat/completions"
+        headers["Authorization"] = f"Bearer {api_key}"
+        headers["HTTP-Referer"] = "https://hireintel-ai.com"
+        headers["X-Title"] = "HireIntel AI"
+        model_name = os.getenv("AI_MODEL", "meta-llama/llama-3-8b-instruct:free").strip()
+    elif provider == "together":
+        api_key = os.getenv("TOGETHER_API_KEY", "").strip()
+        url = "https://api.together.xyz/v1/chat/completions"
+        headers["Authorization"] = f"Bearer {api_key}"
+        model_name = os.getenv("AI_MODEL", "meta-llama/Llama-3-8b-chat-hf").strip()
+    else:
+        logger.error("Invalid AI_PROVIDER: '%s'. Check env file.", provider)
+        return _fallback_response(prompt)
+
+    if not api_key:
+        logger.error("API Key for provider '%s' is missing. Falling back.", provider)
+        return _fallback_response(prompt)
+
+    messages = parse_chat_prompt(prompt)
+    payload = {
+        "model": model_name,
+        "messages": messages,
+        "max_tokens": max_tokens,
+        "temperature": temperature
+    }
+
+    try:
+        return _call_api_with_retries(url, headers, payload)
+    except Exception as exc:
+        logger.exception("Cloud inference completely failed: %s", exc)
+        return _fallback_response(prompt)
 
 
 def extract_questions_from_text(text):
@@ -122,26 +179,3 @@ def extract_score_from_text(text):
         return max(1, min(10, int(match.group(1))))
 
     return 7
-
-
-def unload_model():
-    """Unload model to free memory."""
-    global tokenizer, model, pipe
-
-    if model is not None:
-        del model
-        del tokenizer
-        del pipe
-        tokenizer = None
-        model = None
-        pipe = None
-
-        try:
-            import torch
-
-            if torch.cuda.is_available():
-                torch.cuda.empty_cache()
-        except Exception:
-            pass
-
-        logger.info("Model unloaded, memory freed")

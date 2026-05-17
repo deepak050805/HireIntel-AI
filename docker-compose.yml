@@ -8,9 +8,10 @@ services:
     volumes:
       - ./data:/app/data
       - ./logs:/app/logs
-      - ./models:/app/models
     environment:
       - PORT=5000
-      - PRELOAD_MODELS=1
-      - HIREINTEL_ALLOW_MODEL_DOWNLOAD=1
+      - AI_PROVIDER=groq
+      - GROQ_API_KEY=${GROQ_API_KEY}
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
+      - TOGETHER_API_KEY=${TOGETHER_API_KEY}
     restart: unless-stopped
