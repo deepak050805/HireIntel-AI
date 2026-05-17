@@ -460,8 +460,8 @@ if __name__ == '__main__':
         preload_thread = threading.Thread(target=preload_model, daemon=True)
         preload_thread.start()
 
-    logger.info("Server starting on port %s", os.getenv('PORT', 5000))
-    app.run(port=int(os.getenv('PORT', 5000)), debug=False, use_reloader=False)
+    logger.info("Server starting on host 0.0.0.0, port %s", os.getenv('PORT', 5000))
+    app.run(host="0.0.0.0", port=int(os.getenv('PORT', 5000)), debug=False, use_reloader=False)
 
 
 @app.errorhandler(Exception)
