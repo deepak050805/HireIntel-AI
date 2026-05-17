@@ -3,7 +3,6 @@ flask-cors
 python-dotenv
 PyPDF2
 python-docx
-faiss-cpu
-sentence-transformers
+scikit-learn
 numpy
 pathlib
