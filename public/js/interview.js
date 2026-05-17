@@ -17,7 +17,7 @@ async function initInterview(type) {
   const uiType = normalizedType === "hr" ? "hr" : "tech";
   const container = document.getElementById(`${uiType}Messages`);
   const input = document.getElementById(`${uiType}Input`);
-  const button = input?.closest(".chat-input-area")?.querySelector("button");
+  const button = input?.closest(".chat-input-area")?.querySelector(".primary-cta");
 
   interviewRuntime.activeType = normalizedType;
   interviewRuntime.isSubmitting = false;
@@ -68,90 +68,330 @@ async function initInterview(type) {
   initVoiceSystem();
 }
 
+// ===== SPEECH TO TEXT (STT) =====
+const SpeechToText = {
+  recognition: null,
+  isListening: false,
+  interimTranscript: "",
+  finalTranscript: "",
+  silenceTimer: null,
+
+  init() {
+    if (this.recognition) return true;
+
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      console.warn("Speech recognition is not supported in this browser.");
+      return false;
+    }
+
+    try {
+      this.recognition = new SpeechRecognition();
+      this.recognition.continuous = true;
+      this.recognition.interimResults = true;
+      this.recognition.lang = 'en-US';
+
+      this.recognition.onstart = () => {
+        this.isListening = true;
+        this.interimTranscript = "";
+        this.finalTranscript = "";
+        updateMicUI(true);
+        this.resetSilenceTimer();
+      };
+
+      this.recognition.onresult = (event) => {
+        this.resetSilenceTimer();
+        let interim = "";
+        
+        for (let i = event.resultIndex; i < event.results.length; ++i) {
+          if (event.results[i].isFinal) {
+            this.finalTranscript += event.results[i][0].transcript;
+          } else {
+            interim += event.results[i][0].transcript;
+          }
+        }
+
+        const input = getInterviewInput(interviewRuntime.activeType);
+        if (input) {
+          const baseText = input.dataset.baseText || "";
+          input.value = (baseText + " " + this.finalTranscript + " " + interim).trim();
+          autoResizeTextarea(input);
+        }
+      };
+
+      this.recognition.onerror = (err) => {
+        console.error("Speech recognition error:", err.error);
+        this.clearSilenceTimer();
+        this.isListening = false;
+        updateMicUI(false);
+
+        if (err.error === 'not-allowed') {
+          alert("Microphone permission denied. Please allow microphone access in your browser settings to use voice input.");
+        }
+      };
+
+      this.recognition.onend = () => {
+        this.clearSilenceTimer();
+        this.isListening = false;
+        updateMicUI(false);
+      };
+
+      return true;
+    } catch (e) {
+      console.error("Failed to initialize Speech Recognition:", e);
+      return false;
+    }
+  },
+
+  start() {
+    if (!this.init()) return;
+    if (this.isListening) return;
+
+    // Ensure TTS is stopped before opening microphone
+    if (TextToSpeech.isSpeaking) {
+      TextToSpeech.stop();
+    }
+
+    const input = getInterviewInput(interviewRuntime.activeType);
+    if (input) {
+      input.dataset.baseText = input.value;
+    }
+
+    try {
+      this.recognition.start();
+    } catch (e) {
+      console.error("Speech recognition start failed:", e);
+    }
+  },
+
+  stop() {
+    if (!this.recognition || !this.isListening) return;
+    try {
+      this.recognition.stop();
+    } catch (e) {
+      console.error("Speech recognition stop failed:", e);
+    }
+  },
+
+  resetSilenceTimer() {
+    this.clearSilenceTimer();
+    // Only auto-submit in Voice Mode (continuous natural conversation)
+    if (!TextToSpeech.voiceModeActive) return;
+
+    this.silenceTimer = setTimeout(() => {
+      console.log("Speech silence detected. Stopping mic and submitting answer.");
+      this.stop();
+      
+      const input = getInterviewInput(interviewRuntime.activeType);
+      if (input && input.value.trim().length > 0) {
+        submitAnswer(interviewRuntime.activeType);
+      }
+    }, 4500); // 4.5 seconds of silence auto-submits
+  },
+
+  clearSilenceTimer() {
+    if (this.silenceTimer) {
+      clearTimeout(this.silenceTimer);
+      this.silenceTimer = null;
+    }
+  }
+};
+
+// ===== TEXT TO SPEECH (TTS) =====
+const TextToSpeech = {
+  isSpeaking: false,
+  voiceModeActive: localStorage.getItem("hireintel_voice_mode") === "true",
+
+  init() {
+    if (!('speechSynthesis' in window)) {
+      console.warn("Speech synthesis is not supported in this browser.");
+      return false;
+    }
+    return true;
+  },
+
+  speak(text) {
+    if (!this.voiceModeActive) return;
+    if (!this.init()) return;
+
+    // Pause listening while AI is talking
+    SpeechToText.stop();
+
+    try {
+      window.speechSynthesis.cancel();
+
+      // Strip markup/markdown if any for cleaner synthesis
+      const cleanText = text.replace(/[*_`#]/g, '').trim();
+      const utterance = new SpeechSynthesisUtterance(cleanText);
+
+      // Find professional voice
+      const voices = window.speechSynthesis.getVoices();
+      let selectedVoice = voices.find(v => v.lang.startsWith("en-") && (v.name.includes("Google") || v.name.includes("Natural") || v.name.includes("Apple") || v.name.includes("Microsoft")));
+      if (!selectedVoice) {
+        selectedVoice = voices.find(v => v.lang.startsWith("en-"));
+      }
+
+      if (selectedVoice) utterance.voice = selectedVoice;
+      utterance.pitch = 1.0;
+      utterance.rate = 0.95; // Calm pacing
+
+      utterance.onstart = () => {
+        this.isSpeaking = true;
+        updateVoiceModeUI("speaking");
+      };
+
+      utterance.onend = () => {
+        this.isSpeaking = false;
+        updateVoiceModeUI("active");
+        
+        // Auto-start microphone once AI finishes speaking (continuous conversation)
+        if (this.voiceModeActive) {
+          setTimeout(() => {
+            SpeechToText.start();
+          }, 500); // Natural 500ms delay
+        }
+      };
+
+      utterance.onerror = (e) => {
+        console.error("Speech synthesis utterance error:", e);
+        this.isSpeaking = false;
+        updateVoiceModeUI("active");
+      };
+
+      window.speechSynthesis.speak(utterance);
+    } catch (e) {
+      console.error("Speech synthesis failed:", e);
+      this.isSpeaking = false;
+      updateVoiceModeUI("active");
+    }
+  },
+
+  stop() {
+    if (!this.init()) return;
+    try {
+      window.speechSynthesis.cancel();
+      this.isSpeaking = false;
+      updateVoiceModeUI(this.voiceModeActive ? "active" : "muted");
+    } catch (e) {
+      console.error("Failed to cancel speech synthesis:", e);
+    }
+  },
+
+  toggleVoiceMode() {
+    this.voiceModeActive = !this.voiceModeActive;
+    interviewRuntime.voiceMode = this.voiceModeActive;
+    localStorage.setItem("hireintel_voice_mode", this.voiceModeActive);
+
+    if (this.voiceModeActive) {
+      updateVoiceModeUI("active");
+      this.speak("Voice mode activated. I will read the questions and feedback aloud.");
+    } else {
+      this.stop();
+      SpeechToText.stop();
+      updateVoiceModeUI("muted");
+    }
+  }
+};
+
+function updateVoiceModeUI(state) {
+  const hrToggle = document.getElementById("hrVoiceToggle");
+  const techToggle = document.getElementById("techVoiceToggle");
+
+  [hrToggle, techToggle].forEach(btn => {
+    if (!btn) return;
+    
+    btn.classList.remove("active", "speaking");
+    
+    if (state === "muted") {
+      btn.innerHTML = `
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true" style="opacity: 0.6;"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path><path d="M19 10v1a7 7 0 0 1-14 0v-1"></path><line x1="12" y1="19" x2="12" y2="23"></line><line x1="8" y1="23" x2="16" y2="23"></line></svg>
+        Voice Mode (Muted)
+      `;
+      btn.setAttribute("aria-label", "Enable Interviewer Voice Mode");
+    } else if (state === "active") {
+      btn.classList.add("active");
+      btn.innerHTML = `
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path><path d="M19 10v1a7 7 0 0 1-14 0v-1"></path><line x1="12" y1="19" x2="12" y2="23"></line><line x1="8" y1="23" x2="16" y2="23"></line></svg>
+        Voice Mode (Active)
+      `;
+      btn.setAttribute("aria-label", "Mute Interviewer Voice Mode");
+    } else if (state === "speaking") {
+      btn.classList.add("active", "speaking");
+      btn.innerHTML = `
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path><path d="M19 10v1a7 7 0 0 1-14 0v-1"></path><line x1="12" y1="19" x2="12" y2="23"></line><line x1="8" y1="23" x2="16" y2="23"></line></svg>
+        Voice Mode (Speaking...)
+      `;
+      btn.setAttribute("aria-label", "Mute Interviewer Voice Mode (AI is speaking)");
+    }
+  });
+}
+
+function updateMicUI(isListening) {
+  const hrMic = document.getElementById("hrMicBtn");
+  const techMic = document.getElementById("techMicBtn");
+
+  [hrMic, techMic].forEach(btn => {
+    if (!btn) return;
+    
+    if (isListening) {
+      btn.classList.add("recording");
+      btn.setAttribute("aria-label", "Stop recording voice input");
+      btn.title = "Stop microphone";
+    } else {
+      btn.classList.remove("recording");
+      btn.setAttribute("aria-label", "Start recording voice input");
+      btn.title = "Use microphone";
+    }
+  });
+}
+
 function initVoiceSystem() {
   const hrToggle = document.getElementById("hrVoiceToggle");
   const techToggle = document.getElementById("techVoiceToggle");
   const hrMic = document.getElementById("hrMicBtn");
   const techMic = document.getElementById("techMicBtn");
 
+  // Sync state initially
+  const initialMode = localStorage.getItem("hireintel_voice_mode") === "true";
+  interviewRuntime.voiceMode = initialMode;
+  TextToSpeech.voiceModeActive = initialMode;
+
+  updateVoiceModeUI(initialMode ? "active" : "muted");
+
+  // Reset listeners cleanly by replacing elements
   [hrToggle, techToggle].forEach(btn => {
-    btn?.addEventListener("click", () => {
-      interviewRuntime.voiceMode = !interviewRuntime.voiceMode;
-      hrToggle?.classList.toggle("active", interviewRuntime.voiceMode);
-      techToggle?.classList.toggle("active", interviewRuntime.voiceMode);
-      if (interviewRuntime.voiceMode) {
-        speakAI("Voice mode activated. I will read the questions and feedback aloud.");
-      } else {
-        window.speechSynthesis.cancel();
-      }
-    });
+    if (btn) {
+      const newBtn = btn.cloneNode(true);
+      btn.parentNode.replaceChild(newBtn, btn);
+      newBtn.addEventListener("click", () => {
+        TextToSpeech.toggleVoiceMode();
+      });
+    }
   });
 
   [hrMic, techMic].forEach(btn => {
-    btn?.addEventListener("click", () => toggleMicrophone(interviewRuntime.activeType));
+    if (btn) {
+      const newBtn = btn.cloneNode(true);
+      btn.parentNode.replaceChild(newBtn, btn);
+      newBtn.addEventListener("click", () => {
+        if (SpeechToText.isListening) {
+          SpeechToText.stop();
+        } else {
+          SpeechToText.start();
+        }
+      });
+    }
   });
 
-  if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    interviewRuntime.recognition = new SpeechRecognition();
-    interviewRuntime.recognition.continuous = false;
-    interviewRuntime.recognition.interimResults = false;
-    interviewRuntime.recognition.lang = 'en-US';
-
-    interviewRuntime.recognition.onresult = (event) => {
-      const text = event.results[0][0].transcript;
-      const input = getInterviewInput(interviewRuntime.activeType);
-      if (input) {
-        input.value = text;
-        autoResizeTextarea(input);
-        submitAnswer(interviewRuntime.activeType);
-      }
+  if (window.speechSynthesis && window.speechSynthesis.onvoiceschanged !== undefined) {
+    window.speechSynthesis.onvoiceschanged = () => {
+      window.speechSynthesis.getVoices();
     };
-
-    interviewRuntime.recognition.onend = () => {
-      interviewRuntime.isRecording = false;
-      hrMic?.classList.remove("recording");
-      techMic?.classList.remove("recording");
-    };
-
-    interviewRuntime.recognition.onerror = (err) => {
-      console.error("Speech recognition error", err);
-      interviewRuntime.isRecording = false;
-      hrMic?.classList.remove("recording");
-      techMic?.classList.remove("recording");
-    };
-  }
-}
-
-function toggleMicrophone(type) {
-  if (!interviewRuntime.recognition) {
-    alert("Speech recognition is not supported in this browser.");
-    return;
-  }
-
-  if (interviewRuntime.isRecording) {
-    interviewRuntime.recognition.stop();
-  } else {
-    interviewRuntime.isRecording = true;
-    const btn = document.getElementById(`${type === "hr" ? "hr" : "tech"}MicBtn`);
-    btn?.classList.add("recording");
-    interviewRuntime.recognition.start();
   }
 }
 
 function speakAI(text) {
-  if (!interviewRuntime.voiceMode) return;
-  window.speechSynthesis.cancel();
-  const utterance = new SpeechSynthesisUtterance(text);
-  
-  // Try to find a professional-sounding voice
-  const voices = window.speechSynthesis.getVoices();
-  const preferredVoice = voices.find(v => v.name.includes("Google US English") || v.name.includes("Male") || v.name.includes("Natural"));
-  if (preferredVoice) utterance.voice = preferredVoice;
-  
-  utterance.pitch = 1.0;
-  utterance.rate = 0.95; // Slightly slower for a professional, calm feel
-  window.speechSynthesis.speak(utterance);
+  TextToSpeech.speak(text);
 }
 
 function buildInterviewContext() {
@@ -246,11 +486,8 @@ async function submitAnswer(type) {
     if (res.data.acknowledgment) {
       addMessage("ai", res.data.acknowledgment, normalizedType, { tone: "opening" });
     }
-    addMessage("feedback", feedback.copy, normalizedType, {
-      label: feedback.label
-    });
 
-    const followUpQuestion = getAllowedFollowUp(normalizedType, res.data.followUpQuestion);
+    const followUpQuestion = getAllowedFollowUp(normalizedType, res.data.followUpQuestion, res.data.signals?.answerQuality);
     saveEvaluation(normalizedType, res.data, question, answer);
     maybeAdaptNextQuestion(normalizedType, res.data.suggestedNextQuestion);
 
@@ -319,7 +556,9 @@ function addMessage(sender, text, type, options = {}) {
 
   container.appendChild(msg);
   scrollMessages(type);
-  if (sender === "ai") speakAI(text);
+  if (sender === "ai") {
+    setTimeout(() => speakAI(text), 150);
+  }
   return msg;
 }
 
@@ -386,9 +625,10 @@ function normalizeFeedback(data) {
   return { score, copy, label };
 }
 
-function getAllowedFollowUp(type, followUpQuestion) {
+function getAllowedFollowUp(type, followUpQuestion, qualityLabel) {
   if (!followUpQuestion) return "";
-  if (state.followUpCount >= 1) {
+  const maxFollowUps = qualityLabel === "thin" ? 2 : 1;
+  if (state.followUpCount >= maxFollowUps) {
     state.followUpCount = 0;
     return "";
   }
@@ -437,7 +677,7 @@ function updateProgress(type, currentOverride, totalOverride) {
 
 function setInterviewInputState(type, disabled, buttonText) {
   const input = getInterviewInput(type);
-  const button = input?.closest(".chat-input-area")?.querySelector("button");
+  const button = input?.closest(".chat-input-area")?.querySelector(".primary-cta");
   if (!input || !button) return;
   input.disabled = disabled;
   button.disabled = disabled;
@@ -465,9 +705,56 @@ function getMessageContainer(type) {
   return document.getElementById(`${type === "hr" ? "hr" : "tech"}Messages`);
 }
 
+const scrollAnimationActive = {};
+
 function scrollMessages(type) {
   const container = getMessageContainer(type);
-  container.scrollTo({ top: container.scrollHeight, behavior: "smooth" });
+  if (!container) return;
+
+  const targetScrollTop = container.scrollHeight - container.clientHeight;
+  const startScrollTop = container.scrollTop;
+  const distance = targetScrollTop - startScrollTop;
+  if (distance <= 0) return;
+
+  if (scrollAnimationActive[type]) {
+    cancelAnimationFrame(scrollAnimationActive[type]);
+  }
+
+  const duration = 400; // ms
+  let startTime = null;
+
+  function easeOutQuad(t) {
+    return t * (2 - t);
+  }
+
+  function step(timestamp) {
+    if (!startTime) startTime = timestamp;
+    const progress = timestamp - startTime;
+    const percentage = Math.min(progress / duration, 1);
+    
+    container.scrollTop = startScrollTop + distance * easeOutQuad(percentage);
+
+    if (percentage < 1) {
+      scrollAnimationActive[type] = requestAnimationFrame(step);
+    } else {
+      container.scrollTop = targetScrollTop;
+      scrollAnimationActive[type] = null;
+    }
+  }
+
+  const interrupt = () => {
+    if (scrollAnimationActive[type]) {
+      cancelAnimationFrame(scrollAnimationActive[type]);
+      scrollAnimationActive[type] = null;
+    }
+    container.removeEventListener("wheel", interrupt);
+    container.removeEventListener("touchstart", interrupt);
+  };
+
+  container.addEventListener("wheel", interrupt, { passive: true });
+  container.addEventListener("touchstart", interrupt, { passive: true });
+
+  scrollAnimationActive[type] = requestAnimationFrame(step);
 }
 
 function clearInterviewTimers() {

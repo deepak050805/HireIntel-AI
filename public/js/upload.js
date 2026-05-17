@@ -63,6 +63,10 @@ async function startAnalysis() {
   const progressBar = document.getElementById("uploadProgress");
   const progressFill = document.getElementById("uploadFill");
   progressBar.classList.remove("hidden");
+  
+  const originalText = analyzeBtn.textContent;
+  analyzeBtn.textContent = "Analyzing Resume...";
+  analyzeBtn.classList.add("loading");
   analyzeBtn.disabled = true;
 
   showLoading("Uploading and parsing your resume...");
@@ -100,6 +104,10 @@ async function startAnalysis() {
     progressFill.style.width = "100%";
 
     hideLoading();
+    
+    analyzeBtn.textContent = originalText;
+    analyzeBtn.classList.remove("loading");
+    analyzeBtn.disabled = false;
 
     renderATSResults();
     renderJobResults();
@@ -109,6 +117,8 @@ async function startAnalysis() {
   } catch (err) {
     hideLoading();
     alert("Error: " + err.message);
+    analyzeBtn.textContent = originalText;
+    analyzeBtn.classList.remove("loading");
     analyzeBtn.disabled = false;
     progressBar.classList.add("hidden");
   }

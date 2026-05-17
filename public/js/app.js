@@ -19,6 +19,22 @@ const state = {
 
 // ===== NAVIGATION =====
 function goToSection(index) {
+  // Gracefully stop any active audio playback or speech recognition
+  if (window.speechSynthesis) {
+    try {
+      window.speechSynthesis.cancel();
+    } catch (e) {
+      console.error(e);
+    }
+  }
+  if (typeof SpeechToText !== "undefined") {
+    try {
+      SpeechToText.stop();
+    } catch (e) {
+      console.error(e);
+    }
+  }
+
   state.currentSection = index;
   const sections = document.querySelectorAll(".section");
   sections.forEach((s) => s.classList.remove("active"));

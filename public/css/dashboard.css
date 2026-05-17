@@ -152,6 +152,7 @@ textarea:focus-visible {
     opacity: 0;
     transform: translateY(14px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -298,13 +299,33 @@ textarea:focus-visible {
 .primary-cta {
   margin-top: 26px;
   background: var(--ink);
+  color: #ffffff;
+  font-weight: 750;
   box-shadow: 0 12px 30px rgba(9, 9, 11, .14);
-  transition: all .24s var(--ease);
+  transition: transform .24s var(--ease), box-shadow .24s var(--ease), background .24s var(--ease), opacity .24s var(--ease);
+}
+
+#analyzeBtn {
+  margin-top: 36px;
 }
 
 .primary-cta:hover {
-  transform: translateY(-2px) scale(1.02);
+  transform: translateY(-2px);
+  background: #27272a;
   box-shadow: 0 18px 45px rgba(9, 9, 11, .2);
+}
+
+.primary-cta:active {
+  transform: translateY(0) scale(0.98);
+  box-shadow: 0 4px 12px rgba(9, 9, 11, .1);
+}
+
+.primary-cta:disabled,
+.primary-cta.loading {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
 }
 
 .primary-cta:hover,
@@ -649,8 +670,17 @@ textarea:focus-visible {
 }
 
 @keyframes orbBreath {
-  0%, 100% { transform: scale(1); box-shadow: 0 0 20px rgba(9, 9, 11, .1); }
-  50% { transform: scale(1.04); box-shadow: 0 0 35px rgba(9, 9, 11, .2); }
+
+  0%,
+  100% {
+    transform: scale(1);
+    box-shadow: 0 0 20px rgba(9, 9, 11, .1);
+  }
+
+  50% {
+    transform: scale(1.04);
+    box-shadow: 0 0 35px rgba(9, 9, 11, .2);
+  }
 }
 
 .interviewer-panel h2 {
@@ -741,8 +771,28 @@ textarea:focus-visible {
   flex-direction: column;
   gap: 14px;
   padding: 26px;
-  overflow: auto;
+  overflow-y: auto;
+  overflow-x: hidden;
   background: linear-gradient(180deg, #fff 0%, #fbfbfa 100%);
+  scrollbar-width: thin;
+  scrollbar-color: rgba(9, 9, 11, 0.08) transparent;
+}
+
+.chat-messages::-webkit-scrollbar {
+  width: 6px;
+}
+
+.chat-messages::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.chat-messages::-webkit-scrollbar-thumb {
+  background: rgba(9, 9, 11, 0.08);
+  border-radius: 99px;
+}
+
+.chat-messages:hover::-webkit-scrollbar-thumb {
+  background: rgba(9, 9, 11, 0.16);
 }
 
 .message {
@@ -752,6 +802,7 @@ textarea:focus-visible {
   font-size: 15px;
   line-height: 1.65;
   animation: messageIn .28s var(--ease);
+  will-change: transform, opacity;
 }
 
 @keyframes messageIn {
@@ -759,6 +810,7 @@ textarea:focus-visible {
     opacity: 0;
     transform: translateY(12px) scale(0.98);
   }
+
   to {
     opacity: 1;
     transform: translateY(0) scale(1);
@@ -843,18 +895,43 @@ textarea:focus-visible {
   animation: typingDot 1.4s infinite;
 }
 
-.typing-indicator i:nth-child(2) { animation-delay: .2s; }
-.typing-indicator i:nth-child(3) { animation-delay: .4s; }
-.typing-indicator i:nth-child(4) { animation-delay: .6s; }
+.typing-indicator i:nth-child(2) {
+  animation-delay: .2s;
+}
+
+.typing-indicator i:nth-child(3) {
+  animation-delay: .4s;
+}
+
+.typing-indicator i:nth-child(4) {
+  animation-delay: .6s;
+}
 
 @keyframes typingPulse {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-2px); }
+
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+
+  50% {
+    transform: translateY(-2px);
+  }
 }
 
 @keyframes typingDot {
-  0%, 60%, 100% { transform: translateY(0); opacity: .4; }
-  30% { transform: translateY(-4px); opacity: 1; }
+
+  0%,
+  60%,
+  100% {
+    transform: translateY(0);
+    opacity: .4;
+  }
+
+  30% {
+    transform: translateY(-4px);
+    opacity: 1;
+  }
 }
 
 .retry-card {
@@ -1072,8 +1149,13 @@ textarea:focus-visible {
 }
 
 @keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
 }
 
 .loading-overlay.active {
@@ -1091,7 +1173,9 @@ textarea:focus-visible {
 }
 
 @keyframes spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .loading-text {
@@ -1106,6 +1190,7 @@ textarea:focus-visible {
 }
 
 @media (prefers-reduced-motion: reduce) {
+
   *,
   *::before,
   *::after {
@@ -1117,6 +1202,7 @@ textarea:focus-visible {
 }
 
 @media (max-width: 920px) {
+
   .minimal-nav,
   .analysis-hero,
   .interview-shell {
@@ -1183,7 +1269,7 @@ textarea:focus-visible {
   gap: 12px;
 }
 
-.voice-btn, .mic-btn {
+.voice-btn {
   display: inline-flex;
   align-items: center;
   gap: 8px;
@@ -1195,20 +1281,49 @@ textarea:focus-visible {
   font-size: 12px;
   font-weight: 700;
   transition: all .2s var(--ease);
+  cursor: pointer;
 }
 
-.voice-btn svg, .mic-btn svg {
+.mic-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 1px solid var(--line);
+  background: #fff;
+  color: var(--muted);
+  transition: all .2s var(--ease);
+  cursor: pointer;
+  padding: 0;
+  flex-shrink: 0;
+}
+
+.voice-btn svg {
   width: 14px;
   height: 14px;
 }
 
-.voice-btn:hover, .mic-btn:hover {
+.mic-btn svg {
+  width: 18px;
+  height: 18px;
+}
+
+.voice-btn:hover {
   border-color: var(--line-strong);
   color: var(--ink);
   transform: translateY(-1px);
 }
 
-.voice-btn.active, .mic-btn.active {
+.mic-btn:hover {
+  border-color: var(--line-strong);
+  color: var(--ink);
+  transform: translateY(-1px) scale(1.04);
+}
+
+.voice-btn.active,
+.mic-btn.active {
   background: var(--ink);
   color: #fff;
   border-color: var(--ink);
@@ -1216,16 +1331,40 @@ textarea:focus-visible {
 }
 
 .mic-btn.recording {
-  background: #fee2e2;
-  color: #ef4444;
-  border-color: #fecaca;
-  animation: pulseMic 1.5s infinite;
+  background: var(--ink);
+  color: #fff;
+  border-color: var(--ink);
+  animation: pulseMicMonochrome 1.8s infinite var(--ease);
 }
 
-@keyframes pulseMic {
-  0% { transform: scale(1); opacity: 1; }
-  50% { transform: scale(1.05); opacity: 0.8; }
-  100% { transform: scale(1); opacity: 1; }
+@keyframes pulseMicMonochrome {
+  0% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(9, 9, 11, 0.28);
+  }
+  50% {
+    transform: scale(1.05);
+    box-shadow: 0 0 0 8px rgba(9, 9, 11, 0.08);
+  }
+  100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(9, 9, 11, 0);
+  }
+}
+
+.voice-btn.speaking {
+  animation: pulseVoiceSpeaking 1.8s infinite var(--ease);
+}
+
+@keyframes pulseVoiceSpeaking {
+  0%, 100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  50% {
+    opacity: 0.85;
+    transform: translateY(-1px);
+  }
 }
 
 .input-actions {
@@ -1346,17 +1485,17 @@ textarea:focus-visible {
   .section {
     padding: 64px 20px 40px;
   }
-  
+
   .analysis-hero {
     grid-template-columns: 1fr;
     text-align: center;
   }
-  
+
   .score-reveal {
     justify-self: center;
     margin-top: 24px;
   }
-  
+
   .verdict-card {
     padding: 20px;
   }

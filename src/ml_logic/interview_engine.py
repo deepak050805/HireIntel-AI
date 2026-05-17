@@ -105,17 +105,25 @@ Interviewer response:
 
     model_feedback = None
     try:
-        generated_text = generate_text(prompt, max_tokens=180, temperature=0.45, use_qa_data=True)
-        if generated_text in qa_knowledge_base.values():
-            model_feedback = f"Score: 9/10\nStrong response. A strong answer would include: {generated_text}"
-        elif "<|assistant|>" in generated_text:
-            model_feedback = generated_text.split("<|assistant|>")[-1].strip()
+        if answer_signals.get("is_weak"):
+            score = 2
+            model_feedback = "Score: 2/10\nWeak response. The candidate provided a single-word, low-effort, or irrelevant reply, failing to demonstrate requested competence."
         else:
-            model_feedback = generated_text.strip()
-        score = extract_score_from_text(model_feedback)
+            generated_text = generate_text(prompt, max_tokens=180, temperature=0.45, use_qa_data=True)
+            if generated_text in qa_knowledge_base.values():
+                model_feedback = f"Score: 9/10\nStrong response. A strong answer would include: {generated_text}"
+            elif "<|assistant|>" in generated_text:
+                model_feedback = generated_text.split("<|assistant|>")[-1].strip()
+            else:
+                model_feedback = generated_text.strip()
+            score = extract_score_from_text(model_feedback)
     except Exception as exc:
         logger.exception("Local model answer evaluation failed; using rubric fallback: %s", exc)
         score, model_feedback = _rubric_evaluate(question, answer, interview_type, answer_signals, memory)
+
+    if answer_signals.get("is_weak"):
+        score = 2
+        model_feedback = "Score: 2/10\nWeak response. The candidate provided a single-word, low-effort, or irrelevant reply, failing to demonstrate requested competence."
 
     dimension_scores = _dimension_scores(interview_type, score, answer_signals, memory)
     follow_up = _adaptive_follow_up(interview_type, question, answer, answer_signals, memory, score)
@@ -346,25 +354,46 @@ def _opening_message(interview_type, intelligence):
 
 
 def _analyze_answer_signals(answer):
-    text = answer.lower()
+    text = answer.lower().strip()
     words = re.findall(r"\w+", text)
     unique_words = set(words)
+    
+    weak_phrases = {
+        "ok", "okay", "yes", "no", "yep", "nope", "sure", "fine", "good", "idk", 
+        "i don't know", "i dont know", "not sure", "maybe", "probably", "i think",
+        "done", "i did it", "yeah", "cool", "alright", "no problem", "thanks", "thank you",
+        "nothing", "none", "whatever", "go on", "next", "continue", "skip"
+    }
+    
+    # Detect if answer is empty, extremely short, or consists entirely of filler/weak words
+    is_weak = len(words) < 6 or text in weak_phrases or (len(words) < 12 and unique_words.issubset(weak_phrases | {"i", "am", "it", "to", "do", "a", "for", "with", "the"}))
+
     technologies = [term for term in [
         "python", "flask", "django", "fastapi", "sql", "react", "typescript",
         "javascript", "aws", "docker", "kubernetes", "machine learning", "nlp",
         "api", "testing", "analytics"
     ] if term in text]
+    
     behavioral_themes = [term for term in [
         "team", "collaboration", "conflict", "stakeholder", "leadership",
         "pressure", "stress", "ownership", "mentored", "feedback", "deadline"
     ] if term in text]
+    
     evidence_terms = {"built", "led", "improved", "measured", "designed", "debugged", "shipped", "reduced", "increased", "owned", "launched"}
     uncertainty_terms = {"maybe", "probably", "i think", "not sure", "kind of", "somewhat"}
     confident_terms = {"decided", "owned", "led", "validated", "measured", "because", "therefore"}
+    
     specificity = min(100, (len(words) * 2) + (20 if any(char.isdigit() for char in answer) else 0) + (15 if unique_words & evidence_terms else 0))
     confidence = 58 + (12 if any(term in text for term in confident_terms) else 0) - (14 if any(term in text for term in uncertainty_terms) else 0)
     confidence = max(25, min(95, confidence + min(12, len(words) // 12)))
-    quality_label = "strong" if specificity >= 75 and confidence >= 65 else "developing" if specificity >= 45 else "thin"
+    
+    if is_weak:
+        quality_label = "thin"
+        specificity = max(5, min(15, specificity))
+        confidence = max(10, min(30, confidence))
+    else:
+        quality_label = "strong" if specificity >= 75 and confidence >= 65 else "developing" if specificity >= 45 else "thin"
+        
     return {
         "word_count": len(words),
         "technologies": technologies[:6],
@@ -374,6 +403,7 @@ def _analyze_answer_signals(answer):
         "specificity": specificity,
         "confidence": confidence,
         "quality_label": quality_label,
+        "is_weak": is_weak
     }
 
 
@@ -420,20 +450,21 @@ def _rubric_evaluate(question, answer, interview_type, signals, memory):
     score = max(4, min(9, score))
 
     if interview_type == "technical":
-        feedback = (
-            f"Score: {score}/10\n"
-            "Useful technical direction. Strengthen it by explaining the trade-off, "
-            "debugging path, and how you validated the outcome."
-        )
+        if score >= 8:
+            feedback = "Strong technical explanation with clear architectural understanding and practical implementation signals."
+        elif score >= 6:
+            feedback = "Good technical grounding. Focuses well on choices made, with minor room to elaborate on alternative designs and observability."
+        else:
+            feedback = "Provides a general overview but lacks specific technical trade-offs, architecture decisions, and error-handling criteria."
     else:
-        feedback = (
-            f"Score: {score}/10\n"
-            "Clear conversational direction. Strengthen it by adding the situation, "
-            "the action you personally owned, and the outcome for the team or business."
-        )
-    if score < 7:
-        feedback += " What detail would make this example more concrete?"
-    return score, feedback
+        if score >= 8:
+            feedback = "Clear, highly structured behavioral response demonstrating strong ownership, metrics, and team outcome signals."
+        elif score >= 6:
+            feedback = "Solid behavioral grounding showing good situational awareness and personal action, with slight room to emphasize measurable results."
+        else:
+            feedback = "Brief response that lacks specific personal ownership details, metric achievements, or structured outcome contexts."
+            
+    return score, f"Score: {score}/10\n{feedback}"
 
 
 def _dimension_scores(interview_type, score, signals, memory):
@@ -459,30 +490,36 @@ def _dimension_scores(interview_type, score, signals, memory):
 
 
 def _adaptive_follow_up(interview_type, question, answer, signals, memory, score):
+    if signals.get("is_weak"):
+        if interview_type == "hr":
+            return "This response is extremely brief and doesn't give me much to evaluate. Could you walk me through a specific situation from your background where you actually handled this, detailing what you personally did and the direct outcome?"
+        else:
+            return "That doesn't tell me much about your technical capabilities. Can you walk me through a concrete implementation from your work, detailing the exact architecture, the constraints you faced, and the technical decisions you made?"
+
     if score >= 8 and signals["specificity"] >= 70:
         return None
     if interview_type == "hr":
         themes = set(signals["behavioral_themes"])
         if "team" in themes or "collaboration" in themes:
-            return "What did you personally do to improve collaboration in that situation?"
+            return "What trade-off or challenge arose during that collaboration, and how did you navigate it?"
         if "stress" in themes or "pressure" in themes or "deadline" in themes:
-            return "How did you manage the pressure while keeping the quality of work high?"
+            return "How did you personally prioritize tasks under that pressure to ensure you met the target?"
         if "conflict" in themes or "stakeholder" in themes:
-            return "How did you handle the disagreement while protecting the relationship?"
+            return "What was the main friction point in that disagreement, and how did you resolve it?"
         if signals["confidence"] < 55:
-            return "That is a fair start. What specific example would you choose if you had to show this more confidently?"
+            return "What was the most challenging part of that situation, and how did you measure success?"
         if not signals["has_evidence"]:
-            return "Can you give me a concrete example of what happened and what changed because of your action?"
+            return "Could you share the specific actions you took in that instance and what the direct outcome was?"
     else:
         techs = set(signals["technologies"])
         if "flask" in techs or "api" in techs or "backend" in techs:
-            return "Earlier you mentioned building APIs. How would you handle validation, error handling, and observability for a high-traffic production endpoint?"
+            return "What design or data-model trade-offs did you consider there, and how did you validate the choice?"
         if "react" in techs or "typescript" in techs or "frontend" in techs:
-            return "Regarding your frontend experience, how would you approach state management and performance optimization for a complex user interface?"
+            return "How did you manage state complexity and ensure optimal rendering performance for that component?"
         if "machine learning" in techs or "nlp" in techs or "data" in techs:
-            return "Thinking about the data pipeline you described, how would you evaluate model drift or performance degradation once it's in production?"
+            return "How did you handle data constraints or edge cases during evaluation, and how did you monitor it?"
         if not signals["has_evidence"]:
-            return "That's a good overview. Could you go deeper on a specific trade-off you made during that project and how you validated the outcome?"
+            return "What constraints shaped your technical choices there, and what would you improve if you rebuilt it?"
     return None
 
 
@@ -502,15 +539,38 @@ def _suggest_next_question(interview_type, answer, signals, memory, score):
 
 
 def _interviewer_acknowledgment(interview_type, signals, score):
+    import random
+    if signals.get("is_weak"):
+        transitions = [
+            "That response is far too brief for a professional screening.",
+            "I need a lot more substance than that to assess your background.",
+            "That is unfortunately a very generic and surface-level reply.",
+            "That doesn't really answer the question or give me any specific evidence."
+        ]
+        return random.choice(transitions)
+
     if score >= 8:
-        return "That is a strong example. I can see the ownership and structure in how you explained it."
-    if interview_type == "technical" and signals["technologies"]:
-        return f"That gives me a useful signal around {signals['technologies'][0]}. I want to probe the reasoning a little more."
-    if interview_type == "hr" and signals["behavioral_themes"]:
-        return "That is a helpful direction. I want to understand your role in the situation a bit more clearly."
-    if signals["confidence"] < 55:
-        return "That is a reasonable start. I am going to ask for one more detail to help ground the example."
-    return "Thanks, that helps. I am looking for a little more evidence and specificity in the answer."
+        transitions = [
+            "Excellent. I appreciate the detail there.",
+            "That's a very clear and structured example. Thank you.",
+            "Great. That gives me a solid signal on your approach.",
+            "Understood, that makes perfect sense."
+        ]
+    elif score >= 6:
+        transitions = [
+            "Got it, that is helpful context.",
+            "Thanks. That makes sense.",
+            "Understood. I see the direction you took there.",
+            "Right, that is a clear overview."
+        ]
+    else:
+        transitions = [
+            "Got it. Let's dig a bit deeper into this.",
+            "Understood. I'd like to understand a few details a bit more clearly.",
+            "Thanks for the explanation. Let's unpack that a bit.",
+            "Okay, I see the general approach."
+        ]
+    return random.choice(transitions)
 
 
 def _compose_feedback(interview_type, model_feedback, signals, dimension_scores):
